@@ -3,12 +3,17 @@ import 'package:sqflite/sqflite.dart';
 
 /// Owns the single SQLite connection and the schema.
 class AppDatabase {
-  AppDatabase._();
-  static final AppDatabase instance = AppDatabase._();
+  /// [path] overrides the on-disk location — used by tests to point at an
+  /// in-memory database. Production code uses [instance], which stores the
+  /// database in the platform's default databases directory.
+  AppDatabase({String? path}) : _overridePath = path;
+
+  static final AppDatabase instance = AppDatabase();
 
   static const _dbName = 'delime.db';
   static const _dbVersion = 1;
 
+  final String? _overridePath;
   Database? _db;
 
   Future<Database> get database async {
@@ -16,8 +21,7 @@ class AppDatabase {
   }
 
   Future<Database> _open() async {
-    final dir = await getDatabasesPath();
-    final path = p.join(dir, _dbName);
+    final path = _overridePath ?? p.join(await getDatabasesPath(), _dbName);
     return openDatabase(
       path,
       version: _dbVersion,
@@ -26,6 +30,12 @@ class AppDatabase {
       },
       onCreate: _onCreate,
     );
+  }
+
+  /// Closes the underlying connection. Mainly useful for tests.
+  Future<void> close() async {
+    await _db?.close();
+    _db = null;
   }
 
   Future<void> _onCreate(Database db, int version) async {

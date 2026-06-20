@@ -25,9 +25,9 @@ class SettlementScreen extends StatelessWidget {
           title: 'Nothing to settle yet',
           message: people.isEmpty
               ? 'Add people and log a few purchases — Delime will work out '
-                  'who owes whom.'
+                    'who owes whom.'
               : 'Once you log a purchase, the balances and the cheapest way '
-                  'to settle up show up here.',
+                    'to settle up show up here.',
         ),
       );
     }
@@ -50,24 +50,28 @@ class SettlementScreen extends StatelessWidget {
           if (allSettled)
             const _AllSettledCard()
           else
-            ...settlements.map((s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _SettlementCard(
-                    settlement: s,
-                    from: state.personById(s.fromPersonId)!,
-                    to: state.personById(s.toPersonId)!,
-                  ),
-                )),
+            ...settlements.map(
+              (s) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _SettlementCard(
+                  settlement: s,
+                  from: state.personById(s.fromPersonId)!,
+                  to: state.personById(s.toPersonId)!,
+                ),
+              ),
+            ),
           const SizedBox(height: 24),
           const _SectionLabel('Balances'),
           const SizedBox(height: 10),
-          ...ordered.map((b) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _BalanceCard(
-                  balance: b,
-                  person: state.personById(b.personId)!,
-                ),
-              )),
+          ...ordered.map(
+            (b) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _BalanceCard(
+                balance: b,
+                person: state.personById(b.personId)!,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -118,8 +122,11 @@ class _AllSettledCard extends StatelessWidget {
               shape: BoxShape.circle,
               color: AppTheme.positive.withValues(alpha: 0.18),
             ),
-            child: const Icon(Icons.check_rounded,
-                size: 36, color: AppTheme.positive),
+            child: const Icon(
+              Icons.check_rounded,
+              size: 36,
+              color: AppTheme.positive,
+            ),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -181,8 +188,11 @@ class _SettlementCard extends StatelessWidget {
                       ),
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 8),
-                        child: Icon(Icons.arrow_forward,
-                            size: 18, color: AppTheme.primary),
+                        child: Icon(
+                          Icons.arrow_forward,
+                          size: 18,
+                          color: AppTheme.primary,
+                        ),
                       ),
                       Flexible(
                         child: Text(
@@ -199,8 +209,10 @@ class _SettlementCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   const Text(
                     'pays',
-                    style:
-                        TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -246,14 +258,18 @@ class _BalanceCard extends StatelessWidget {
     final color = balance.isSettled
         ? AppTheme.neutral
         : balance.isCreditor
-            ? AppTheme.positive
-            : AppTheme.negative;
+        ? AppTheme.positive
+        : AppTheme.negative;
     final label = balance.isSettled
         ? 'settled'
         : balance.isCreditor
-            ? 'gets back'
-            : 'owes';
-    final sign = net > 0 ? '+' : net < 0 ? '−' : '';
+        ? 'gets back'
+        : 'owes';
+    final sign = net > 0
+        ? '+'
+        : net < 0
+        ? '−'
+        : '';
 
     return Container(
       padding: const EdgeInsets.all(14),

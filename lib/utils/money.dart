@@ -42,10 +42,7 @@ class Money {
     if (count <= 0) return const [];
     final base = totalCents ~/ count;
     final remainder = totalCents % count;
-    return List<int>.generate(
-      count,
-      (i) => base + (i < remainder ? 1 : 0),
-    );
+    return List<int>.generate(count, (i) => base + (i < remainder ? 1 : 0));
   }
 }
 

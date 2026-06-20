@@ -18,8 +18,7 @@ class PurchasesScreen extends StatelessWidget {
     final purchases = state.purchases;
     final hasPeople = state.people.isNotEmpty;
 
-    final totalCents =
-        purchases.fold<int>(0, (sum, p) => sum + p.totalCents);
+    final totalCents = purchases.fold<int>(0, (sum, p) => sum + p.totalCents);
 
     return Scaffold(
       floatingActionButton: purchases.isEmpty
@@ -29,8 +28,10 @@ class PurchasesScreen extends StatelessWidget {
               backgroundColor: AppTheme.primary,
               foregroundColor: AppTheme.onPrimary,
               icon: const Icon(Icons.add),
-              label: const Text('Add purchase',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
+              label: const Text(
+                'Add purchase',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
       body: CustomScrollView(
         slivers: [
@@ -63,7 +64,9 @@ class PurchasesScreen extends StatelessWidget {
           else ...[
             SliverToBoxAdapter(
               child: _TotalHeader(
-                  count: purchases.length, totalCents: totalCents),
+                count: purchases.length,
+                totalCents: totalCents,
+              ),
             ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
@@ -76,8 +79,7 @@ class PurchasesScreen extends StatelessWidget {
                     purchase: purchase,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) =>
-                            AddPurchaseScreen(existing: purchase),
+                        builder: (_) => AddPurchaseScreen(existing: purchase),
                       ),
                     ),
                   );
@@ -92,14 +94,14 @@ class PurchasesScreen extends StatelessWidget {
 
   void _openAdd(BuildContext context, bool hasPeople) {
     if (!hasPeople) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add some people first.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Add some people first.')));
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const AddPurchaseScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const AddPurchaseScreen()));
   }
 }
 
@@ -160,8 +162,7 @@ class _TotalHeader extends StatelessWidget {
             ),
             const Spacer(),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.25),
                 borderRadius: BorderRadius.circular(30),
@@ -202,8 +203,8 @@ class _PurchaseCard extends StatelessWidget {
     final paidBy = payerNames.isEmpty
         ? 'Unknown'
         : payerNames.length <= 2
-            ? payerNames.join(' & ')
-            : '${payerNames.take(1).join()} +${payerNames.length - 1}';
+        ? payerNames.join(' & ')
+        : '${payerNames.take(1).join()} +${payerNames.length - 1}';
 
     return Material(
       color: AppTheme.surface,

@@ -56,8 +56,9 @@ class AvatarCluster extends StatelessWidget {
     final overlap = size * 0.38;
     final width = shown.isEmpty
         ? 0.0
-        : size + (shown.length - 1) * (size - overlap) +
-            (overflow > 0 ? (size - overlap) : 0);
+        : size +
+              (shown.length - 1) * (size - overlap) +
+              (overflow > 0 ? (size - overlap) : 0);
 
     return SizedBox(
       width: width,
@@ -67,10 +68,7 @@ class AvatarCluster extends StatelessWidget {
           for (var i = 0; i < shown.length; i++)
             Positioned(
               left: i * (size - overlap),
-              child: _ring(
-                context,
-                PersonAvatar(person: shown[i], size: size),
-              ),
+              child: _ring(context, PersonAvatar(person: shown[i], size: size)),
             ),
           if (overflow > 0)
             Positioned(

@@ -24,10 +24,10 @@ class AppTheme {
 
   /// The standard outlined surface card used throughout the app.
   static BoxDecoration get cardDecoration => BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: outline),
-      );
+    color: surface,
+    borderRadius: BorderRadius.circular(radius),
+    border: Border.all(color: outline),
+  );
 
   static ThemeData dark() {
     const scheme = ColorScheme.dark(
@@ -68,9 +68,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: surface,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         margin: EdgeInsets.zero,
       ),
       dividerTheme: const DividerThemeData(
@@ -81,8 +79,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surfaceHigh,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -124,8 +124,7 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
         backgroundColor: surfaceHigh,
         contentTextStyle: const TextStyle(color: textPrimary),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: surface,

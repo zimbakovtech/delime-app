@@ -24,11 +24,13 @@ class SettlementService {
     }
 
     return people
-        .map((p) => Balance(
-              personId: p.id,
-              paidCents: paid[p.id] ?? 0,
-              owedCents: owed[p.id] ?? 0,
-            ))
+        .map(
+          (p) => Balance(
+            personId: p.id,
+            paidCents: paid[p.id] ?? 0,
+            owedCents: owed[p.id] ?? 0,
+          ),
+        )
         .toList();
   }
 
@@ -54,14 +56,17 @@ class SettlementService {
 
       final creditor = creditors.first;
       final debtor = debtors.first;
-      final amount =
-          creditor.amount < debtor.amount ? creditor.amount : debtor.amount;
+      final amount = creditor.amount < debtor.amount
+          ? creditor.amount
+          : debtor.amount;
 
-      settlements.add(Settlement(
-        fromPersonId: debtor.id,
-        toPersonId: creditor.id,
-        amountCents: amount,
-      ));
+      settlements.add(
+        Settlement(
+          fromPersonId: debtor.id,
+          toPersonId: creditor.id,
+          amountCents: amount,
+        ),
+      );
 
       creditor.amount -= amount;
       debtor.amount -= amount;

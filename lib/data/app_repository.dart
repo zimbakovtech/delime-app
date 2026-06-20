@@ -27,8 +27,12 @@ class AppRepository {
 
   Future<void> updatePerson(Person person) async {
     final db = await _db;
-    await db.update('people', person.toMap(),
-        where: 'id = ?', whereArgs: [person.id]);
+    await db.update(
+      'people',
+      person.toMap(),
+      where: 'id = ?',
+      whereArgs: [person.id],
+    );
   }
 
   Future<void> deletePerson(String id) async {
@@ -39,13 +43,16 @@ class AppRepository {
   /// Number of purchases that reference [personId] as a payer or in the split.
   Future<int> personUsageCount(String personId) async {
     final db = await _db;
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT COUNT(*) AS c FROM (
         SELECT purchase_id FROM payers WHERE person_id = ?
         UNION
         SELECT purchase_id FROM splits WHERE person_id = ?
       )
-    ''', [personId, personId]);
+    ''',
+      [personId, personId],
+    );
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
@@ -53,19 +60,25 @@ class AppRepository {
 
   Future<List<Purchase>> getPurchases() async {
     final db = await _db;
-    final purchaseRows =
-        await db.query('purchases', orderBy: 'created_at DESC');
+    final purchaseRows = await db.query(
+      'purchases',
+      orderBy: 'created_at DESC',
+    );
     final payerRows = await db.query('payers');
     final splitRows = await db.query('splits');
 
     List<Contribution> contributionsFor(
-        List<Map<String, Object?>> rows, String purchaseId) {
+      List<Map<String, Object?>> rows,
+      String purchaseId,
+    ) {
       return rows
           .where((r) => r['purchase_id'] == purchaseId)
-          .map((r) => Contribution(
-                personId: r['person_id'] as String,
-                amountCents: r['amount'] as int,
-              ))
+          .map(
+            (r) => Contribution(
+              personId: r['person_id'] as String,
+              amountCents: r['amount'] as int,
+            ),
+          )
           .toList();
     }
 
@@ -88,10 +101,16 @@ class AppRepository {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
       // Replace child rows wholesale — simplest correct path for edits.
-      await txn
-          .delete('payers', where: 'purchase_id = ?', whereArgs: [purchase.id]);
-      await txn
-          .delete('splits', where: 'purchase_id = ?', whereArgs: [purchase.id]);
+      await txn.delete(
+        'payers',
+        where: 'purchase_id = ?',
+        whereArgs: [purchase.id],
+      );
+      await txn.delete(
+        'splits',
+        where: 'purchase_id = ?',
+        whereArgs: [purchase.id],
+      );
 
       for (final c in purchase.payers) {
         await txn.insert('payers', {

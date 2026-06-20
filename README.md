@@ -140,13 +140,44 @@ flutter pub get
 # Run on a connected device / emulator
 flutter run
 
-# Run the tests (settlement correctness, rounding, conversion)
+# Run the tests
 flutter test
 
-# Build a release APK
+# Build a release APK (Android)
 flutter build apk --release
 # → build/app/outputs/flutter-apk/app-release.apk
+
+# Build for iOS (no signing — e.g. on CI)
+flutter build ios --release --no-codesign
 ```
+
+Delime targets both **Android** and **iOS** (bundle id `com.delime.app` on both).
+
+## Tests
+
+Tests mirror `lib/` under `test/` and cover the logic end to end:
+
+| Area | File |
+|------|------|
+| Money: conversion, formatting, `splitEqually` rounding | `test/utils/money_test.dart` |
+| Balances + greedy min-transaction settlement | `test/services/settlement_service_test.dart` |
+| `Person` / `Purchase` value types | `test/models/` |
+| Repository CRUD over in-memory SQLite (`sqflite_common_ffi`) | `test/data/app_repository_test.dart` |
+| `AppState`: colour assignment, delete-guard, derived data | `test/state/app_state_test.dart` |
+| Widgets: avatars, empty states | `test/widgets/` |
+
+## Quality gates & CI
+
+Local quality gates live in [`scripts/`](scripts/README.md) and run on every PR
+to `main` / `develop` via [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
+
+```bash
+bash scripts/quality_gates.sh
+```
+
+Gates: `dart format` · `flutter analyze` (fatal infos/warnings) · stray
+`print()` regression · empty-dir regression · `flutter test`. CI also builds the
+Android APK and the iOS app (no codesign) on each PR.
 
 ### Build configuration
 - `applicationId`: `com.delime.app`

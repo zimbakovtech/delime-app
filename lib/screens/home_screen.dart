@@ -16,11 +16,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _index = 0;
 
-  static const _tabs = [
-    PurchasesScreen(),
-    SettlementScreen(),
-    PeopleScreen(),
-  ];
+  static const _tabs = [PurchasesScreen(), SettlementScreen(), PeopleScreen()];
 
   @override
   Widget build(BuildContext context) {
@@ -64,8 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 64,
               elevation: 0,
               backgroundColor: Colors.transparent,
-              labelBehavior:
-                  NavigationDestinationLabelBehavior.alwaysShow,
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
               selectedIndex: _index,
               onDestinationSelected: (i) => setState(() => _index = i),
               destinations: const [

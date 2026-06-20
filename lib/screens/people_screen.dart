@@ -41,8 +41,10 @@ class PeopleScreen extends StatelessWidget {
               backgroundColor: AppTheme.primary,
               foregroundColor: AppTheme.onPrimary,
               icon: const Icon(Icons.person_add_alt_1),
-              label: const Text('Add person',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
+              label: const Text(
+                'Add person',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
       body: people.isEmpty
           ? EmptyState(
@@ -200,7 +202,8 @@ class _ConfirmDeleteSheet extends StatelessWidget {
                       side: const BorderSide(color: AppTheme.outline),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     child: const Text('Cancel'),
                   ),
@@ -241,7 +244,8 @@ class _PersonSheetState extends State<_PersonSheet> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.existing?.name ?? '');
-    _colorValue = widget.existing?.colorValue ??
+    _colorValue =
+        widget.existing?.colorValue ??
         AvatarPalette.suggestColorValue(
           context.read<AppState>().people.map((p) => p.colorValue).toList(),
         );

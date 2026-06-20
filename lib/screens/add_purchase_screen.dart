@@ -51,8 +51,9 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
       _includedIds.addAll(_people.map((p) => p.id));
     } else {
       _nameController.text = existing.name;
-      _amountController.text =
-          Money.centsToEur(existing.totalCents).toStringAsFixed(2);
+      _amountController.text = Money.centsToEur(
+        existing.totalCents,
+      ).toStringAsFixed(2);
       for (final c in existing.payers) {
         _payerIds.add(c.personId);
         _payerCents[c.personId] = c.amountCents;
@@ -60,12 +61,17 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
       _includedIds.addAll(existing.splits.map((c) => c.personId));
       // Detect whether the saved split is a plain equal split.
       final equal = Money.splitEqually(
-          existing.totalCents, existing.splits.length);
+        existing.totalCents,
+        existing.splits.length,
+      );
       final sortedSplit = [...existing.splits]
         ..sort((a, b) => b.amountCents.compareTo(a.amountCents));
-      final isEqual = sortedSplit.length == equal.length &&
-          List.generate(equal.length,
-              (i) => sortedSplit[i].amountCents == equal[i]).every((e) => e);
+      final isEqual =
+          sortedSplit.length == equal.length &&
+          List.generate(
+            equal.length,
+            (i) => sortedSplit[i].amountCents == equal[i],
+          ).every((e) => e);
       _splitMode = isEqual ? _SplitMode.equally : _SplitMode.custom;
       for (final c in existing.splits) {
         _customCents[c.personId] = c.amountCents;
@@ -113,8 +119,7 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
     return {for (final id in ids) id: _customCents[id] ?? 0};
   }
 
-  int get _splitsTotal =>
-      _splitShares.values.fold(0, (sum, c) => sum + c);
+  int get _splitsTotal => _splitShares.values.fold(0, (sum, c) => sum + c);
 
   bool get _payersValid =>
       _payerIds.isNotEmpty && _payersTotal == _totalCents && _totalCents > 0;
@@ -158,8 +163,9 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
     for (var i = 0; i < _payerIds.length; i++) {
       final id = _payerIds[i];
       _payerCents[id] = parts[i];
-      _payerControllers[id]?.text =
-          Money.centsToEur(parts[i]).toStringAsFixed(2);
+      _payerControllers[id]?.text = Money.centsToEur(
+        parts[i],
+      ).toStringAsFixed(2);
     }
   }
 
@@ -188,8 +194,9 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
         final parts = Money.splitEqually(_totalCents, ids.length);
         for (var i = 0; i < ids.length; i++) {
           _customCents[ids[i]] = parts[i];
-          _customControllers[ids[i]]?.text =
-              Money.centsToEur(parts[i]).toStringAsFixed(2);
+          _customControllers[ids[i]]?.text = Money.centsToEur(
+            parts[i],
+          ).toStringAsFixed(2);
         }
       }
     });
@@ -310,7 +317,8 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
                 child: TextField(
                   controller: _amountController,
                   keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true),
+                    decimal: true,
+                  ),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                   ],
@@ -323,8 +331,7 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
                   decoration: InputDecoration(
                     hintText: '0.00',
                     prefixText: _currency == InputCurrency.eur ? '€ ' : '',
-                    suffixText:
-                        _currency == InputCurrency.mkd ? ' ден' : '',
+                    suffixText: _currency == InputCurrency.mkd ? ' ден' : '',
                     prefixStyle: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
@@ -344,24 +351,28 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
                 ? _hintChip(
                     key: const ValueKey('mkd'),
                     icon: Icons.swap_horiz,
-                    text: '= ${Money.formatEur(_totalCents)} '
+                    text:
+                        '= ${Money.formatEur(_totalCents)} '
                         '(at 1 € = 61.5 ден)',
                   )
                 : showEurHint
-                    ? _hintChip(
-                        key: const ValueKey('eur'),
-                        icon: Icons.swap_horiz,
-                        text: '= ${Money.formatMkd(_totalCents)}',
-                      )
-                    : const SizedBox.shrink(),
+                ? _hintChip(
+                    key: const ValueKey('eur'),
+                    icon: Icons.swap_horiz,
+                    text: '= ${Money.formatMkd(_totalCents)}',
+                  )
+                : const SizedBox.shrink(),
           ),
         ],
       ),
     );
   }
 
-  Widget _hintChip(
-      {required Key key, required IconData icon, required String text}) {
+  Widget _hintChip({
+    required Key key,
+    required IconData icon,
+    required String text,
+  }) {
     return Container(
       key: key,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -405,8 +416,10 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
               }),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: _currency == c ? AppTheme.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(9),
@@ -488,7 +501,8 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
               included: _includedIds.contains(person.id),
               mode: _splitMode,
               shareCents: shares[person.id] ?? 0,
-              controller: _splitMode == _SplitMode.custom &&
+              controller:
+                  _splitMode == _SplitMode.custom &&
                       _includedIds.contains(person.id)
                   ? _controllerFor(_customControllers, person.id, _customCents)
                   : null,
@@ -517,11 +531,11 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon,
-                    size: 17,
-                    color: selected
-                        ? AppTheme.onPrimary
-                        : AppTheme.textSecondary),
+                Icon(
+                  icon,
+                  size: 17,
+                  color: selected ? AppTheme.onPrimary : AppTheme.textSecondary,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   label,
@@ -634,8 +648,11 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
               if (problems != null) ...[
                 Row(
                   children: [
-                    const Icon(Icons.info_outline,
-                        size: 16, color: AppTheme.neutral),
+                    const Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: AppTheme.neutral,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -659,7 +676,8 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
                     disabledForegroundColor: AppTheme.textSecondary,
                   ),
                   child: Text(
-                      widget.existing != null ? 'Save changes' : 'Save purchase'),
+                    widget.existing != null ? 'Save changes' : 'Save purchase',
+                  ),
                 ),
               ),
             ],
@@ -681,7 +699,9 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
           ? 'Payers are ${Money.formatEur(diff)} short of the total.'
           : 'Payers exceed the total by ${Money.formatEur(-diff)}.';
     }
-    if (_includedIds.isEmpty) return 'Include at least one person in the split.';
+    if (_includedIds.isEmpty) {
+      return 'Include at least one person in the split.';
+    }
     if (!_splitValid) {
       final diff = _totalCents - _splitsTotal;
       return diff > 0
@@ -734,8 +754,10 @@ class _SectionCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               subtitle!,
-              style:
-                  const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              style: const TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+              ),
             ),
           ],
           const SizedBox(height: 14),
@@ -817,14 +839,12 @@ class _PersonChip extends StatelessWidget {
               person.name,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color:
-                    selected ? AppTheme.textPrimary : AppTheme.textSecondary,
+                color: selected ? AppTheme.textPrimary : AppTheme.textSecondary,
               ),
             ),
             if (selected) ...[
               const SizedBox(width: 6),
-              const Icon(Icons.check_circle,
-                  size: 16, color: AppTheme.primary),
+              const Icon(Icons.check_circle, size: 16, color: AppTheme.primary),
             ],
           ],
         ),
@@ -924,9 +944,7 @@ class _EurField extends StatelessWidget {
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       textAlign: TextAlign.end,
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-      ],
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
       onChanged: (v) {
         final raw = double.tryParse(v.replaceAll(',', '.')) ?? 0;
         onChanged(Money.eurToCents(raw));
