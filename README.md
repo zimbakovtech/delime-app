@@ -150,5 +150,19 @@ flutter build apk --release
 
 ### Build configuration
 - `applicationId`: `com.delime.app`
-- `minSdkVersion`: 21
 - `targetSdkVersion`: 34
+- `minSdkVersion`: **24** — the spec asks for 21, but Flutter 3.41 (the SDK this
+  was built with) enforces a hard minimum and rejects anything below its floor:
+  `flutter build apk --release` fails the `ReleaseMinSdkCheck` with *"minimum
+  Android SDK version (21) is lower than Flutter's minimum supported version"*.
+  Since a working release APK from the plain build command is a non-negotiable
+  requirement, `minSdk` is left at Flutter's floor (`flutter.minSdkVersion` = 24).
+  This only affects the *install* floor (API 24 / Android 7.0+); the app runs
+  unchanged on every newer device. To force 21 you'd need an older Flutter or
+  the `--android-skip-build-dependency-validation` flag.
+
+---
+
+## License
+
+[MIT](LICENSE) © Damjan Zimbakov

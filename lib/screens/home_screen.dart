@@ -1,11 +1,10 @@
+import 'package:delime/screens/people_screen.dart';
+import 'package:delime/screens/purchases_screen.dart';
+import 'package:delime/screens/settlement_screen.dart';
+import 'package:delime/state/app_state.dart';
+import 'package:delime/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../state/app_state.dart';
-import '../theme/app_theme.dart';
-import 'people_screen.dart';
-import 'purchases_screen.dart';
-import 'settlement_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

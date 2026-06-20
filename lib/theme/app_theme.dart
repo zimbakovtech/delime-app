@@ -19,6 +19,16 @@ class AppTheme {
   static const Color textPrimary = Color(0xFFF1F5F9);
   static const Color textSecondary = Color(0xFF94A3B8);
 
+  // Shared geometry.
+  static const double radius = 18;
+
+  /// The standard outlined surface card used throughout the app.
+  static BoxDecoration get cardDecoration => BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: outline),
+      );
+
   static ThemeData dark() {
     const scheme = ColorScheme.dark(
       primary: primary,

@@ -1,14 +1,13 @@
+import 'package:delime/models/person.dart';
+import 'package:delime/models/purchase.dart';
+import 'package:delime/screens/add_purchase_screen.dart';
+import 'package:delime/state/app_state.dart';
+import 'package:delime/theme/app_theme.dart';
+import 'package:delime/utils/money.dart';
+import 'package:delime/widgets/empty_state.dart';
+import 'package:delime/widgets/person_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../models/person.dart';
-import '../models/purchase.dart';
-import '../state/app_state.dart';
-import '../theme/app_theme.dart';
-import '../utils/money.dart';
-import '../widgets/empty_state.dart';
-import '../widgets/person_avatar.dart';
-import 'add_purchase_screen.dart';
 
 class PurchasesScreen extends StatelessWidget {
   const PurchasesScreen({super.key});
@@ -35,10 +34,10 @@ class PurchasesScreen extends StatelessWidget {
             ),
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
+          const SliverAppBar(
             pinned: true,
             backgroundColor: AppTheme.background,
-            title: const Text('Purchases'),
+            title: Text('Purchases'),
           ),
           if (purchases.isEmpty)
             SliverFillRemaining(
@@ -76,7 +75,7 @@ class PurchasesScreen extends StatelessWidget {
                   return _PurchaseCard(
                     purchase: purchase,
                     onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
+                      MaterialPageRoute<void>(
                         builder: (_) =>
                             AddPurchaseScreen(existing: purchase),
                       ),
@@ -99,7 +98,7 @@ class PurchasesScreen extends StatelessWidget {
       return;
     }
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AddPurchaseScreen()),
+      MaterialPageRoute<void>(builder: (_) => const AddPurchaseScreen()),
     );
   }
 }

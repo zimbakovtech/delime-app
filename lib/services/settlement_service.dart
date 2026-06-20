@@ -1,6 +1,6 @@
-import '../models/balance.dart';
-import '../models/person.dart';
-import '../models/purchase.dart';
+import 'package:delime/models/balance.dart';
+import 'package:delime/models/person.dart';
+import 'package:delime/models/purchase.dart';
 
 /// Pure functions that derive balances and the minimum-transaction
 /// settlement plan from the raw people + purchases data.

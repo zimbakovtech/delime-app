@@ -1,12 +1,11 @@
+import 'package:delime/data/app_repository.dart';
+import 'package:delime/data/database.dart';
+import 'package:delime/screens/home_screen.dart';
+import 'package:delime/state/app_state.dart';
+import 'package:delime/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-
-import 'data/app_repository.dart';
-import 'data/database.dart';
-import 'screens/home_screen.dart';
-import 'state/app_state.dart';
-import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

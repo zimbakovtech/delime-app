@@ -1,12 +1,12 @@
+import 'package:delime/models/person.dart';
+import 'package:delime/state/app_state.dart';
+import 'package:delime/theme/app_theme.dart';
+import 'package:delime/theme/avatar_palette.dart';
+import 'package:delime/widgets/empty_state.dart';
+import 'package:delime/widgets/person_avatar.dart';
+import 'package:delime/widgets/sheet_grabber.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../models/person.dart';
-import '../state/app_state.dart';
-import '../theme/app_theme.dart';
-import '../theme/avatar_palette.dart';
-import '../widgets/empty_state.dart';
-import '../widgets/person_avatar.dart';
 
 class PeopleScreen extends StatelessWidget {
   const PeopleScreen({super.key});
@@ -95,7 +95,7 @@ class PeopleScreen extends StatelessWidget {
   }
 
   void _showPersonSheet(BuildContext context, {Person? existing}) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (_) => _PersonSheet(existing: existing),
@@ -165,7 +165,7 @@ class _ConfirmDeleteSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _SheetGrabber(),
+            const SheetGrabber(),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -284,7 +284,7 @@ class _PersonSheetState extends State<_PersonSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _SheetGrabber(),
+              const SheetGrabber(),
               const SizedBox(height: 16),
               Text(
                 isEditing ? 'Edit person' : 'Add person',
@@ -374,24 +374,6 @@ class _ColorDot extends StatelessWidget {
         child: selected
             ? const Icon(Icons.check, color: Colors.black, size: 22)
             : null,
-      ),
-    );
-  }
-}
-
-class _SheetGrabber extends StatelessWidget {
-  const _SheetGrabber();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 40,
-        height: 4,
-        decoration: BoxDecoration(
-          color: AppTheme.outline,
-          borderRadius: BorderRadius.circular(2),
-        ),
       ),
     );
   }

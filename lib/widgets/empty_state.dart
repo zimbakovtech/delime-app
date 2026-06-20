@@ -1,6 +1,5 @@
+import 'package:delime/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-
-import '../theme/app_theme.dart';
 
 /// A friendly, centred empty / placeholder state with an icon, a headline,
 /// a supporting line, and an optional call-to-action button.
@@ -31,7 +30,7 @@ class EmptyState extends StatelessWidget {
             Container(
               width: 88,
               height: 88,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppTheme.surfaceHigh,
               ),

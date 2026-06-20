@@ -1,13 +1,12 @@
+import 'package:delime/models/balance.dart';
+import 'package:delime/models/person.dart';
+import 'package:delime/state/app_state.dart';
+import 'package:delime/theme/app_theme.dart';
+import 'package:delime/utils/money.dart';
+import 'package:delime/widgets/empty_state.dart';
+import 'package:delime/widgets/person_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../models/balance.dart';
-import '../models/person.dart';
-import '../state/app_state.dart';
-import '../theme/app_theme.dart';
-import '../utils/money.dart';
-import '../widgets/empty_state.dart';
-import '../widgets/person_avatar.dart';
 
 class SettlementScreen extends StatelessWidget {
   const SettlementScreen({super.key});
@@ -158,11 +157,7 @@ class _SettlementCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.outline),
-      ),
+      decoration: AppTheme.cardDecoration,
       child: Row(
         children: [
           PersonAvatar(person: from, size: 42),
@@ -262,11 +257,7 @@ class _BalanceCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.outline),
-      ),
+      decoration: AppTheme.cardDecoration,
       child: Column(
         children: [
           Row(

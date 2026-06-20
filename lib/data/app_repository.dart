@@ -1,8 +1,7 @@
+import 'package:delime/data/database.dart';
+import 'package:delime/models/person.dart';
+import 'package:delime/models/purchase.dart';
 import 'package:sqflite/sqflite.dart';
-
-import '../models/person.dart';
-import '../models/purchase.dart';
-import 'database.dart';
 
 /// Data-access layer. All persistence goes through here; the rest of the app
 /// never touches SQL directly.

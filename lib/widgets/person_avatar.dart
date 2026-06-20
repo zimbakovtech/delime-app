@@ -1,6 +1,5 @@
+import 'package:delime/models/person.dart';
 import 'package:flutter/material.dart';
-
-import '../models/person.dart';
 
 /// Colour-coded circular avatar showing a person's initials.
 class PersonAvatar extends StatelessWidget {

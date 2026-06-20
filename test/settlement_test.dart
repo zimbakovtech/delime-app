@@ -1,29 +1,28 @@
-import 'package:flutter_test/flutter_test.dart';
-
+import 'package:delime/models/person.dart';
 import 'package:delime/models/purchase.dart';
 import 'package:delime/services/settlement_service.dart';
-import 'package:delime/models/person.dart';
 import 'package:delime/utils/money.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   // Four friends from the spec's example scenario.
-  final john = Person(id: 'john', name: 'John', colorValue: 0xFF34D399);
-  final eve = Person(id: 'eve', name: 'Eve', colorValue: 0xFF60A5FA);
-  final marc = Person(id: 'marc', name: 'Marc', colorValue: 0xFFF472B6);
-  final amy = Person(id: 'amy', name: 'Amy', colorValue: 0xFFFBBF24);
+  const john = Person(id: 'john', name: 'John', colorValue: 0xFF34D399);
+  const eve = Person(id: 'eve', name: 'Eve', colorValue: 0xFF60A5FA);
+  const marc = Person(id: 'marc', name: 'Marc', colorValue: 0xFFF472B6);
+  const amy = Person(id: 'amy', name: 'Amy', colorValue: 0xFFFBBF24);
   final people = [john, eve, marc, amy];
 
   group('example scenario — €10 dinner, Marc & John pay €5 each', () {
-    final dinner = Purchase(
+    const dinner = Purchase(
       id: 'p1',
       name: 'Dinner',
       totalCents: 1000,
       createdAt: 0,
-      payers: const [
+      payers: [
         Contribution(personId: 'marc', amountCents: 500),
         Contribution(personId: 'john', amountCents: 500),
       ],
-      splits: const [
+      splits: [
         Contribution(personId: 'john', amountCents: 250),
         Contribution(personId: 'eve', amountCents: 250),
         Contribution(personId: 'marc', amountCents: 250),
@@ -78,13 +77,13 @@ void main() {
 
   test('single-person trip still settles (no transactions)', () {
     final solo = [john];
-    final purchase = Purchase(
+    const purchase = Purchase(
       id: 'p',
       name: 'Coffee',
       totalCents: 300,
       createdAt: 0,
-      payers: const [Contribution(personId: 'john', amountCents: 300)],
-      splits: const [Contribution(personId: 'john', amountCents: 300)],
+      payers: [Contribution(personId: 'john', amountCents: 300)],
+      splits: [Contribution(personId: 'john', amountCents: 300)],
     );
     final balances =
         SettlementService.computeBalances(solo, [purchase]);

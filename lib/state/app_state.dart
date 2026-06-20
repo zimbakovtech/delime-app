@@ -1,12 +1,11 @@
+import 'package:delime/data/app_repository.dart';
+import 'package:delime/models/balance.dart';
+import 'package:delime/models/person.dart';
+import 'package:delime/models/purchase.dart';
+import 'package:delime/services/settlement_service.dart';
+import 'package:delime/theme/avatar_palette.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-
-import '../data/app_repository.dart';
-import '../models/balance.dart';
-import '../models/person.dart';
-import '../models/purchase.dart';
-import '../services/settlement_service.dart';
-import '../theme/avatar_palette.dart';
 
 /// Raised when an operation can't be completed for a user-facing reason
 /// (e.g. deleting a person who is part of a purchase).

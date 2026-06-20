@@ -1,13 +1,12 @@
+import 'package:delime/models/person.dart';
+import 'package:delime/models/purchase.dart';
+import 'package:delime/state/app_state.dart';
+import 'package:delime/theme/app_theme.dart';
+import 'package:delime/utils/money.dart';
+import 'package:delime/widgets/person_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-
-import '../models/person.dart';
-import '../models/purchase.dart';
-import '../state/app_state.dart';
-import '../theme/app_theme.dart';
-import '../utils/money.dart';
-import '../widgets/person_avatar.dart';
 
 enum _SplitMode { equally, custom }
 
@@ -602,7 +601,7 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
 
   Widget _statusBadge(bool valid, int remainingCents) {
     if (valid) {
-      return _Badge(
+      return const _Badge(
         icon: Icons.check_circle,
         text: 'Balanced',
         color: AppTheme.positive,
@@ -712,11 +711,7 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.outline),
-      ),
+      decoration: AppTheme.cardDecoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -732,7 +727,7 @@ class _SectionCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (trailing != null) trailing!,
+              ?trailing,
             ],
           ),
           if (subtitle != null) ...[
