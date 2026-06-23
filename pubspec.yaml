@@ -17,6 +17,9 @@ dependencies:
   provider: ^6.1.2
   intl: ^0.19.0
   uuid: ^4.4.0
+  # Local receipt photos — capture/pick an image and store it on-device only.
+  image_picker: ^1.1.2
+  path_provider: ^2.1.4
 
 dev_dependencies:
   flutter_test:

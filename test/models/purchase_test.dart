@@ -57,6 +57,24 @@ void main() {
       expect(map['name'], 'Taxi');
       expect(map['total'], 900);
       expect(map['created_at'], 42);
+      expect(map['category'], 'Other');
+    });
+
+    test('category defaults to Other and round-trips through copyWith', () {
+      expect(purchase.category, 'Other');
+      final groceries = purchase.copyWith(category: 'Groceries');
+      expect(groceries.category, 'Groceries');
+      expect(groceries.toMap()['category'], 'Groceries');
+    });
+
+    test('fromMap falls back to Other when category is missing', () {
+      final map = purchase.toMap()..remove('category');
+      final restored = Purchase.fromMap(
+        map,
+        payers: const [],
+        splits: const [],
+      );
+      expect(restored.category, 'Other');
     });
 
     test('fromMap attaches the provided payers and splits', () {

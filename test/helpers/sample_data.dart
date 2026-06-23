@@ -1,5 +1,16 @@
 import 'package:delime/models/person.dart';
 import 'package:delime/models/purchase.dart';
+import 'package:delime/models/trip.dart';
+
+/// A canonical trip fixture for repository/state tests.
+const sampleTrip = Trip(
+  id: 'trip',
+  name: 'Greece',
+  type: TripType.vacation,
+  coverColor: 0xFF34D399,
+  createdAt: 1,
+  updatedAt: 1,
+);
 
 /// Shared fixtures for the spec's four-friends example scenario.
 const john = Person(id: 'john', name: 'John', colorValue: 0xFF34D399);

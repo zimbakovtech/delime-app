@@ -4,6 +4,7 @@ import 'package:delime/screens/add_purchase_screen.dart';
 import 'package:delime/state/app_state.dart';
 import 'package:delime/theme/app_theme.dart';
 import 'package:delime/utils/money.dart';
+import 'package:delime/widgets/category_chip.dart';
 import 'package:delime/widgets/empty_state.dart';
 import 'package:delime/widgets/person_avatar.dart';
 import 'package:flutter/material.dart';
@@ -35,10 +36,10 @@ class PurchasesScreen extends StatelessWidget {
             ),
       body: CustomScrollView(
         slivers: [
-          const SliverAppBar(
+          SliverAppBar(
             pinned: true,
             backgroundColor: AppTheme.background,
-            title: Text('Purchases'),
+            title: Text(state.currentTrip?.name ?? 'Purchases'),
           ),
           if (purchases.isEmpty)
             SliverFillRemaining(
@@ -253,9 +254,11 @@ class _PurchaseCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Row(
                 children: [
+                  CategoryChip(category: purchase.category),
+                  const SizedBox(width: 8),
                   AvatarCluster(people: splitPeople, size: 26),
                   const SizedBox(width: 10),
                   Expanded(

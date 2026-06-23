@@ -4,15 +4,22 @@ class Balance {
   final int paidCents;
   final int owedCents;
 
+  /// Net effect of recorded settlements on this person: amount they have paid
+  /// out minus amount they have received. Reduces their outstanding net.
+  /// Zero when no settlements have been recorded.
+  final int settledCents;
+
   const Balance({
     required this.personId,
     required this.paidCents,
     required this.owedCents,
+    this.settledCents = 0,
   });
 
-  /// paid − owed. Positive: others owe this person (creditor).
+  /// Outstanding net: (paid − owed) adjusted by recorded settlements.
+  /// Positive: others owe this person (creditor).
   /// Negative: this person still needs to pay (debtor).
-  int get netCents => paidCents - owedCents;
+  int get netCents => paidCents - owedCents + settledCents;
 
   bool get isSettled => netCents == 0;
   bool get isCreditor => netCents > 0;

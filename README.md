@@ -2,17 +2,26 @@
 
 > *Macedonian: "We split."*
 
-**Delime** is an offline Android app for tracking shared trip expenses. Friends
-log purchases, record who paid and who owes what, and at the end Delime works out
-**exactly who should pay whom — with the fewest possible transactions** to settle
-every debt.
+**Delime** is an offline Android & iOS app for tracking shared expenses across
+**multiple trips**. Friends log purchases, record who paid and who owes what, and
+Delime works out **exactly who should pay whom — with the fewest possible
+transactions** to settle every debt.
 
 No accounts, no internet, no cloud. All data lives in a local SQLite database on
-the device.
+the device — it runs from a clean install in airplane mode.
 
 ---
 
 ## Features
+
+### 🧳 Trips
+- The home screen is a list of **trips** — a holiday, a household, a night out.
+  Each trip is its own isolated ledger of people, purchases and settlements.
+- Create, edit, **archive** and delete trips. Each gets a type (vacation,
+  household, couple, event, other), an optional date range, and a cover colour.
+- A quick **net-balance pill** and member count show each trip's status at a
+  glance. Tapping a trip opens the Purchases / Settle / People shell scoped to it.
+- People are **trip-scoped** — identities are not shared across trips (yet).
 
 ### 👥 People
 - Add, edit, and delete trip members.
@@ -24,15 +33,24 @@ the device.
 ### 🧾 Purchases — the heart of the app
 A guided, single-screen flow:
 1. **Name** the purchase (Dinner, Taxi, Groceries…).
-2. **Amount + currency** — enter in **EUR (€)** or **MKD (ден)**. When MKD is
+2. **Category** — pick a built-in (Food, Drinks, Transport, Accommodation,
+   Groceries, Activities, Shopping, Other) or type a **custom** one. The category
+   shows as a chip in the purchase list.
+3. **Amount + currency** — enter in **EUR (€)** or **MKD (ден)**. When MKD is
    selected the EUR equivalent is shown live (and vice-versa). Fixed rate:
    **1 EUR = 61.5 MKD**.
-3. **Paid by** — one payer by default (pays the full amount). Add more payers as
+4. **Paid by** — one payer by default (pays the full amount). Add more payers as
    chips; each gets their own amount. A live badge shows how much is left to
    assign or whether payers are over the total.
-4. **Split between** — everyone equally by default. Switch to **Custom** to enter
-   per-person shares, or exclude people entirely. A payer doesn't have to be in
-   the split (e.g. someone buying a group gift).
+5. **Split between** — four strategies, all of which reconcile to the cent:
+   - **Equal** — shared evenly (exclude anyone who shouldn't pay).
+   - **Exact** — type each person's exact € amount.
+   - **Percent** — type each person's % (must total 100%).
+   - **Shares** — type integer weights (a bigger weight pays more).
+
+   A payer doesn't have to be in the split (e.g. someone buying a group gift).
+6. **Receipts** *(when editing a purchase)* — attach photos from the camera or
+   gallery. They're stored **on-device only**; nothing is uploaded.
 
 The save button stays disabled until **both** the payer total and the split total
 match the purchase total, with a friendly explanation of any mismatch.
@@ -40,8 +58,11 @@ match the purchase total, with a friendly explanation of any mismatch.
 ### 🤝 Settle up
 - Per-person **balance summary**: how much they paid, their share, and their net
   (colour-coded — green if they're owed money, red if they owe).
-- The **minimum set of payments** to settle everyone, each showing the amount in
-  both EUR and MKD.
+- The payment plan, with a **"Simplify debts" toggle**: on = the **minimum set of
+  payments** to settle everyone (greedy minimiser); off = **direct
+  debtor → creditor** payments without rerouting through other people.
+- **Mark a payment as settled** (with an optional note) — it's recorded, removed
+  from the outstanding balances, and listed in the **settlement history** (undoable).
 - When everyone is balanced, a clear "All square!" celebration instead of an
   empty list.
 
@@ -60,9 +81,12 @@ All amounts are stored and calculated internally as **integer EUR cents** to
 avoid floating-point rounding errors. EUR is the canonical currency; MKD is only
 an input/display convenience converted at the fixed rate of **1 EUR = 61.5 MKD**.
 
-**Equal-split rounding:** when a total doesn't divide evenly, the leftover
-cent(s) are handed out one per person from the top, so the shares always sum
-exactly to the total. e.g. €10.00 ÷ 3 → €3.34, €3.33, €3.33.
+**Split rounding:** when a total doesn't divide evenly, the leftover cent(s) are
+handed out so the shares always sum exactly to the total. Equal splits hand them
+out one per person from the top (€10.00 ÷ 3 → €3.34, €3.33, €3.33); **percentage**
+and **shares** splits use the **largest-remainder** rule (`utils/split.dart`).
+Percentages are entered as basis points internally (10000 = 100%) to keep the
+maths integer-only.
 
 **Settlement algorithm:** a greedy minimum-transaction matcher. It repeatedly
 pairs the **biggest debtor** with the **biggest creditor**, transfers the smaller
@@ -95,38 +119,52 @@ This exact scenario is covered by the automated tests in
 lib/
   main.dart                     App entry, theme + Provider wiring
   models/
+    trip.dart                   Trip (name, type, dates, cover, status)
     person.dart                 Person (name, colour, initials)
     purchase.dart               Purchase + Contribution (payer/split share)
     balance.dart                Balance + Settlement value types
+    settlement_record.dart      A recorded (confirmed) payment
+    attachment.dart             A local receipt-photo reference
   services/
-    settlement_service.dart     Pure balance + greedy settlement logic
+    settlement_service.dart     Pure balances + greedy/direct settlement logic
   data/
-    database.dart               SQLite schema / connection
-    app_repository.dart         All SQL CRUD lives here
+    database.dart               SQLite schema / connection / migrations
+    app_repository.dart         All SQL CRUD lives here (scoped by trip)
+    receipt_store.dart          Receipt-file interface (keeps AppState pure)
+    file_receipt_store.dart     On-device file impl (path_provider + dart:io)
   state/
-    app_state.dart              ChangeNotifier: in-memory state + derived data
+    app_state.dart              ChangeNotifier: trips + trip-scoped state
   screens/
-    home_screen.dart            Bottom-nav shell (Purchases / Settle / People)
+    trips_screen.dart           Home: the trips list (entry point)
+    add_edit_trip_screen.dart   Create / edit a trip
+    home_screen.dart            Per-trip bottom-nav shell (Purchases / Settle / People)
     purchases_screen.dart       Purchase list + totals
-    add_purchase_screen.dart    The core add/edit flow
-    settlement_screen.dart      Balances + payment plan
+    add_purchase_screen.dart    The core add/edit flow (category, splits, receipts)
+    settlement_screen.dart      Balances, plan, simplify toggle, history
     people_screen.dart          Manage trip members
   theme/
     app_theme.dart              Dark Material 3 theme + colour tokens
-    avatar_palette.dart         Avatar colour set + auto-assignment
+    avatar_palette.dart         Avatar/cover colour set + auto-assignment
   utils/
     money.dart                  Cents, EUR/MKD formatting & conversion, splitEqually
-  widgets/                      Reusable UI (avatars, empty states, sheets)
+    split.dart                  Split-strategy math (largest-remainder)
+    categories.dart             Built-in expense categories + icons
+    trip_display.dart           Trip type labels/icons + date formatting
+  widgets/                      Reusable UI (avatars, cards, chips, thumbnails…)
 ```
 
 - **State management:** `provider` (`ChangeNotifier`). The repository is the only
   thing that touches SQL; `AppState` keeps in-memory lists in sync and exposes
   derived balances/settlements computed by the pure `SettlementService`.
-- **Database:** `sqflite` with four tables — `people`, `purchases`, `payers`,
-  `splits` (child rows cascade-delete with their purchase).
+- **Database:** `sqflite`, **schema v2**, seven tables — `trips`, `people`,
+  `purchases`, `payers`, `splits`, `settlements`, `attachments`. `people` and
+  `purchases` carry a `trip_id`; children cascade-delete with their trip/purchase.
+  A forward-only migration moves a v1 (single-ledger) database into one
+  auto-created default trip with zero data loss.
 
 ### Dependencies
-`sqflite`, `path`, `provider`, `intl`, `uuid` — no network/cloud packages.
+`sqflite`, `path`, `provider`, `intl`, `uuid`, `image_picker`, `path_provider` —
+no network/cloud packages.
 
 ---
 
@@ -160,11 +198,14 @@ Tests mirror `lib/` under `test/` and cover the logic end to end:
 | Area | File |
 |------|------|
 | Money: conversion, formatting, `splitEqually` rounding | `test/utils/money_test.dart` |
+| Split strategies (equal/exact/percent/shares reconcile exactly) | `test/utils/split_test.dart` |
+| Expense categories | `test/utils/categories_test.dart` |
 | Balances + greedy min-transaction settlement | `test/services/settlement_service_test.dart` |
 | `Person` / `Purchase` value types | `test/models/` |
-| Repository CRUD over in-memory SQLite (`sqflite_common_ffi`) | `test/data/app_repository_test.dart` |
-| `AppState`: colour assignment, delete-guard, derived data | `test/state/app_state_test.dart` |
-| Widgets: avatars, empty states | `test/widgets/` |
+| Repository CRUD (trips/people/purchases/settlements/attachments) over in-memory SQLite | `test/data/app_repository_test.dart` |
+| **v1 → v2 migration** upgrades a populated DB with zero loss | `test/data/migration_test.dart` |
+| `AppState`: trip scoping, settle/undo, simplify toggle, receipts | `test/state/app_state_test.dart` |
+| Widgets/screens: trips list, split editor, settle screen, avatars, empty states | `test/screens/`, `test/widgets/` |
 
 ## Quality gates & CI
 

@@ -24,6 +24,10 @@ class Purchase {
   final int totalCents;
   final int createdAt; // epoch millis
 
+  /// Expense category — a built-in label (see `utils/categories.dart`) or a
+  /// custom free-text string. Defaults to `Other`.
+  final String category;
+
   /// Who handed over the money, and how much each paid.
   final List<Contribution> payers;
 
@@ -35,6 +39,7 @@ class Purchase {
     required this.name,
     required this.totalCents,
     required this.createdAt,
+    this.category = 'Other',
     required this.payers,
     required this.splits,
   });
@@ -46,6 +51,7 @@ class Purchase {
   Purchase copyWith({
     String? name,
     int? totalCents,
+    String? category,
     List<Contribution>? payers,
     List<Contribution>? splits,
   }) => Purchase(
@@ -53,6 +59,7 @@ class Purchase {
     name: name ?? this.name,
     totalCents: totalCents ?? this.totalCents,
     createdAt: createdAt,
+    category: category ?? this.category,
     payers: payers ?? this.payers,
     splits: splits ?? this.splits,
   );
@@ -62,6 +69,7 @@ class Purchase {
     'name': name,
     'total': totalCents,
     'created_at': createdAt,
+    'category': category,
   };
 
   factory Purchase.fromMap(
@@ -73,6 +81,7 @@ class Purchase {
     name: map['name'] as String,
     totalCents: map['total'] as int,
     createdAt: map['created_at'] as int,
+    category: (map['category'] as String?) ?? 'Other',
     payers: payers,
     splits: splits,
   );

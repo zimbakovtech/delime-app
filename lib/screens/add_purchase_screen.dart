@@ -1,14 +1,20 @@
+import 'dart:io';
+
+import 'package:delime/models/attachment.dart';
 import 'package:delime/models/person.dart';
 import 'package:delime/models/purchase.dart';
 import 'package:delime/state/app_state.dart';
 import 'package:delime/theme/app_theme.dart';
+import 'package:delime/utils/categories.dart';
 import 'package:delime/utils/money.dart';
+import 'package:delime/utils/split.dart';
 import 'package:delime/widgets/person_avatar.dart';
+import 'package:delime/widgets/receipt_thumbnail.dart';
+import 'package:delime/widgets/sheet_grabber.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-
-enum _SplitMode { equally, custom }
 
 class AddPurchaseScreen extends StatefulWidget {
   final Purchase? existing;
@@ -22,17 +28,22 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   InputCurrency _currency = InputCurrency.eur;
+  String _category = ExpenseCategory.fallback;
 
   // Payers: ordered ids of who paid, plus per-payer cents + text controllers.
   final List<String> _payerIds = [];
   final Map<String, int> _payerCents = {};
   final Map<String, TextEditingController> _payerControllers = {};
 
-  // Split: included ids, mode, and per-person custom cents + controllers.
+  // Split: included ids, mode, and per-person inputs for each strategy.
   final Set<String> _includedIds = {};
-  _SplitMode _splitMode = _SplitMode.equally;
-  final Map<String, int> _customCents = {};
-  final Map<String, TextEditingController> _customControllers = {};
+  SplitMode _splitMode = SplitMode.equal;
+  final Map<String, int> _exactCents = {}; // exactAmounts: cents per person
+  final Map<String, int> _percentBp = {}; // percentages: 1/100 of a percent
+  final Map<String, int> _shares = {}; // shares: integer weights
+  final Map<String, TextEditingController> _splitControllers = {};
+
+  final ImagePicker _picker = ImagePicker();
 
   late final List<Person> _people;
 
@@ -51,6 +62,7 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
       _includedIds.addAll(_people.map((p) => p.id));
     } else {
       _nameController.text = existing.name;
+      _category = existing.category;
       _amountController.text = Money.centsToEur(
         existing.totalCents,
       ).toStringAsFixed(2);
@@ -59,7 +71,8 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
         _payerCents[c.personId] = c.amountCents;
       }
       _includedIds.addAll(existing.splits.map((c) => c.personId));
-      // Detect whether the saved split is a plain equal split.
+      // Detect whether the saved split is a plain equal split; otherwise edit
+      // it as exact amounts (percentages/shares can't be uniquely recovered).
       final equal = Money.splitEqually(
         existing.totalCents,
         existing.splits.length,
@@ -72,9 +85,9 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
             equal.length,
             (i) => sortedSplit[i].amountCents == equal[i],
           ).every((e) => e);
-      _splitMode = isEqual ? _SplitMode.equally : _SplitMode.custom;
+      _splitMode = isEqual ? SplitMode.equal : SplitMode.exactAmounts;
       for (final c in existing.splits) {
-        _customCents[c.personId] = c.amountCents;
+        _exactCents[c.personId] = c.amountCents;
       }
     }
   }
@@ -86,7 +99,7 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
     for (final c in _payerControllers.values) {
       c.dispose();
     }
-    for (final c in _customControllers.values) {
+    for (final c in _splitControllers.values) {
       c.dispose();
     }
     super.dispose();
@@ -105,27 +118,59 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
   int get _payersTotal =>
       _payerIds.fold(0, (sum, id) => sum + (_payerCents[id] ?? 0));
 
-  /// The split shares actually used, honouring the current mode.
+  List<String> get _includedOrdered => _people
+      .where((p) => _includedIds.contains(p.id))
+      .map((p) => p.id)
+      .toList();
+
+  /// The resolved split shares (in cents) for the current strategy. Every
+  /// strategy reconciles to [_totalCents] via the leftover-unit rule.
   Map<String, int> get _splitShares {
-    final ids = _people
-        .where((p) => _includedIds.contains(p.id))
-        .map((p) => p.id)
-        .toList();
+    final ids = _includedOrdered;
     if (ids.isEmpty) return {};
-    if (_splitMode == _SplitMode.equally) {
-      final parts = Money.splitEqually(_totalCents, ids.length);
-      return {for (var i = 0; i < ids.length; i++) ids[i]: parts[i]};
+    switch (_splitMode) {
+      case SplitMode.equal:
+        final parts = Money.splitEqually(_totalCents, ids.length);
+        return {for (var i = 0; i < ids.length; i++) ids[i]: parts[i]};
+      case SplitMode.exactAmounts:
+        return {for (final id in ids) id: _exactCents[id] ?? 0};
+      case SplitMode.percentages:
+        final parts = SplitMath.byPercentages(_totalCents, [
+          for (final id in ids) _percentBp[id] ?? 0,
+        ]);
+        return {for (var i = 0; i < ids.length; i++) ids[i]: parts[i]};
+      case SplitMode.shares:
+        final parts = SplitMath.byShares(_totalCents, [
+          for (final id in ids) _shares[id] ?? 0,
+        ]);
+        return {for (var i = 0; i < ids.length; i++) ids[i]: parts[i]};
     }
-    return {for (final id in ids) id: _customCents[id] ?? 0};
   }
 
   int get _splitsTotal => _splitShares.values.fold(0, (sum, c) => sum + c);
 
+  int get _percentTotalBp =>
+      _includedOrdered.fold(0, (sum, id) => sum + (_percentBp[id] ?? 0));
+
+  int get _sharesTotal =>
+      _includedOrdered.fold(0, (sum, id) => sum + (_shares[id] ?? 0));
+
   bool get _payersValid =>
       _payerIds.isNotEmpty && _payersTotal == _totalCents && _totalCents > 0;
 
-  bool get _splitValid =>
-      _includedIds.isNotEmpty && _splitsTotal == _totalCents && _totalCents > 0;
+  bool get _splitValid {
+    if (_includedIds.isEmpty || _totalCents <= 0) return false;
+    switch (_splitMode) {
+      case SplitMode.equal:
+        return true;
+      case SplitMode.exactAmounts:
+        return _splitsTotal == _totalCents;
+      case SplitMode.percentages:
+        return _percentTotalBp == 10000;
+      case SplitMode.shares:
+        return _sharesTotal > 0;
+    }
+  }
 
   bool get _canSave =>
       _nameController.text.trim().isNotEmpty &&
@@ -173,33 +218,55 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
     setState(() {
       if (_includedIds.contains(id)) {
         _includedIds.remove(id);
-        _customCents.remove(id);
+        _exactCents.remove(id);
+        _percentBp.remove(id);
+        _shares.remove(id);
       } else {
         _includedIds.add(id);
-        _customCents[id] = 0;
-        _customControllers[id]?.text = '0.00';
       }
+      _seedSplitInputs();
     });
   }
 
-  void _setSplitMode(_SplitMode mode) {
+  void _setSplitMode(SplitMode mode) {
     setState(() {
       _splitMode = mode;
-      if (mode == _SplitMode.custom) {
-        // Seed custom amounts from the current equal split as a starting point.
-        final ids = _people
-            .where((p) => _includedIds.contains(p.id))
-            .map((p) => p.id)
-            .toList();
+      _seedSplitInputs();
+    });
+  }
+
+  /// Seeds the current strategy's per-person inputs (and their text fields) from
+  /// an even baseline, so switching strategy or membership starts balanced.
+  void _seedSplitInputs() {
+    final ids = _includedOrdered;
+    if (ids.isEmpty) return;
+    switch (_splitMode) {
+      case SplitMode.equal:
+        break; // computed, no inputs
+      case SplitMode.exactAmounts:
         final parts = Money.splitEqually(_totalCents, ids.length);
         for (var i = 0; i < ids.length; i++) {
-          _customCents[ids[i]] = parts[i];
-          _customControllers[ids[i]]?.text = Money.centsToEur(
+          _exactCents[ids[i]] = parts[i];
+          _splitControllers[ids[i]]?.text = Money.centsToEur(
             parts[i],
           ).toStringAsFixed(2);
         }
-      }
-    });
+      case SplitMode.percentages:
+        // Even split of 100% (10000 bp) that sums exactly.
+        final parts = SplitMath.allocateByWeights(
+          10000,
+          List<int>.filled(ids.length, 1),
+        );
+        for (var i = 0; i < ids.length; i++) {
+          _percentBp[ids[i]] = parts[i];
+          _splitControllers[ids[i]]?.text = (parts[i] / 100).toStringAsFixed(2);
+        }
+      case SplitMode.shares:
+        for (final id in ids) {
+          _shares[id] = 1;
+          _splitControllers[id]?.text = '1';
+        }
+    }
   }
 
   Future<void> _save() async {
@@ -213,6 +280,7 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
       totalCents: _totalCents,
       createdAt:
           widget.existing?.createdAt ?? DateTime.now().millisecondsSinceEpoch,
+      category: _category,
       payers: [
         for (final id in _payerIds)
           Contribution(personId: id, amountCents: _payerCents[id] ?? 0),
@@ -259,6 +327,7 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.existing != null;
+    final state = context.watch<AppState>();
 
     return Scaffold(
       appBar: AppBar(
@@ -278,15 +347,108 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
         children: [
           _nameField(),
           const SizedBox(height: 16),
+          _categorySection(),
+          const SizedBox(height: 16),
           _amountSection(),
           const SizedBox(height: 16),
           _payersSection(),
           const SizedBox(height: 16),
           _splitSection(),
           const SizedBox(height: 16),
+          if (isEditing && state.receiptsEnabled) ...[
+            _receiptsSection(state),
+            const SizedBox(height: 16),
+          ],
         ],
       ),
       bottomNavigationBar: _saveBar(),
+    );
+  }
+
+  Widget _receiptsSection(AppState state) {
+    final attachments = state.attachmentsFor(widget.existing!.id);
+    return _SectionCard(
+      title: 'Receipts',
+      subtitle: 'Photos stay on this device.',
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          for (final a in attachments)
+            ReceiptThumbnail(
+              attachment: a,
+              onRemove: () => _removeReceipt(a),
+              onView: () => _viewReceipt(a),
+            ),
+          _AddReceiptButton(onTap: _pickReceiptSource),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickReceiptSource() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            const SheetGrabber(),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+    await _addReceipt(source);
+  }
+
+  Future<void> _addReceipt(ImageSource source) async {
+    final state = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+    final XFile? file = await _picker.pickImage(source: source, maxWidth: 2000);
+    if (file == null) return;
+    try {
+      await state.addReceipt(widget.existing!.id, file.path);
+    } on Object {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Couldn\'t attach that photo.')),
+      );
+    }
+  }
+
+  Future<void> _removeReceipt(Attachment attachment) async {
+    await context.read<AppState>().removeReceipt(attachment);
+  }
+
+  void _viewReceipt(Attachment attachment) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: GestureDetector(
+          onTap: () => Navigator.pop(ctx),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: InteractiveViewer(
+              child: Image.file(File(attachment.filePath)),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -301,6 +463,66 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
         prefixIcon: Icon(Icons.label_outline),
       ),
     );
+  }
+
+  Widget _categorySection() {
+    final isCustom = !ExpenseCategory.isBuiltIn(_category);
+    return _SectionCard(
+      title: 'Category',
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final c in ExpenseCategory.builtIns)
+            _CategoryChoiceChip(
+              label: c,
+              icon: ExpenseCategory.iconFor(c),
+              selected: _category == c,
+              onTap: () => setState(() => _category = c),
+            ),
+          _CategoryChoiceChip(
+            label: isCustom ? _category : 'Custom…',
+            icon: Icons.sell_outlined,
+            selected: isCustom,
+            onTap: _promptCustomCategory,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _promptCustomCategory() async {
+    final controller = TextEditingController(
+      text: ExpenseCategory.isBuiltIn(_category) ? '' : _category,
+    );
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        title: const Text('Custom category'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(hintText: 'e.g. Souvenirs'),
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Use'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result != null && result.isNotEmpty) {
+      setState(() => _category = result);
+    }
   }
 
   Widget _amountSection() {
@@ -481,15 +703,10 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
 
   Widget _splitSection() {
     final shares = _splitShares;
-    final remaining = _totalCents - _splitsTotal;
     return _SectionCard(
       title: 'Split between',
-      subtitle: _splitMode == _SplitMode.equally
-          ? 'Shared equally. Tap a person to include or exclude them.'
-          : 'Enter each person\'s share.',
-      trailing: _splitMode == _SplitMode.custom
-          ? _statusBadge(_splitValid, remaining)
-          : null,
+      subtitle: _splitSubtitle,
+      trailing: _splitTrailingBadge(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -502,71 +719,118 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
               mode: _splitMode,
               shareCents: shares[person.id] ?? 0,
               controller:
-                  _splitMode == _SplitMode.custom &&
+                  _splitMode != SplitMode.equal &&
                       _includedIds.contains(person.id)
-                  ? _controllerFor(_customControllers, person.id, _customCents)
+                  ? _splitControllerFor(person.id)
                   : null,
               onToggle: () => _toggleIncluded(person.id),
-              onChanged: (cents) =>
-                  setState(() => _customCents[person.id] = cents),
+              onChanged: (value) => _onSplitInputChanged(person.id, value),
             ),
         ],
       ),
     );
   }
 
-  Widget _splitModeToggle() {
-    Widget tab(String label, _SplitMode mode, IconData icon) {
-      final selected = _splitMode == mode;
-      return Expanded(
-        child: GestureDetector(
-          onTap: () => _setSplitMode(mode),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: selected ? AppTheme.primary : Colors.transparent,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 17,
-                  color: selected ? AppTheme.onPrimary : AppTheme.textSecondary,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: selected
-                        ? AppTheme.onPrimary
-                        : AppTheme.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
+  String get _splitSubtitle => switch (_splitMode) {
+    SplitMode.equal =>
+      'Shared equally. Tap a person to include or exclude them.',
+    SplitMode.exactAmounts => 'Enter each person\'s exact amount.',
+    SplitMode.percentages => 'Enter each person\'s share. Must total 100%.',
+    SplitMode.shares => 'Enter weights — a bigger weight pays more.',
+  };
 
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceHigh,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.outline),
-      ),
-      child: Row(
-        children: [
-          tab('Equally', _SplitMode.equally, Icons.balance),
-          tab('Custom', _SplitMode.custom, Icons.tune),
-        ],
-      ),
+  Widget? _splitTrailingBadge() {
+    switch (_splitMode) {
+      case SplitMode.equal:
+        return null;
+      case SplitMode.exactAmounts:
+        return _statusBadge(_splitValid, _totalCents - _splitsTotal);
+      case SplitMode.percentages:
+        final remainingBp = 10000 - _percentTotalBp;
+        if (remainingBp == 0) {
+          return const _Badge(
+            icon: Icons.check_circle,
+            text: '100%',
+            color: AppTheme.positive,
+          );
+        }
+        final over = remainingBp < 0;
+        return _Badge(
+          icon: over ? Icons.error_outline : Icons.pending_outlined,
+          text: over
+              ? '${_formatPercent(-remainingBp)}% over'
+              : '${_formatPercent(remainingBp)}% left',
+          color: over ? AppTheme.negative : AppTheme.neutral,
+        );
+      case SplitMode.shares:
+        return _Badge(
+          icon: _splitValid ? Icons.check_circle : Icons.pending_outlined,
+          text: _splitValid ? '$_sharesTotal total' : 'Set weights',
+          color: _splitValid ? AppTheme.positive : AppTheme.neutral,
+        );
+    }
+  }
+
+  static String _formatPercent(int basisPoints) {
+    final value = basisPoints / 100;
+    return value == value.roundToDouble()
+        ? value.toStringAsFixed(0)
+        : value.toStringAsFixed(2);
+  }
+
+  Widget _splitModeToggle() {
+    const modes = <(SplitMode, String, IconData)>[
+      (SplitMode.equal, 'Equal', Icons.balance),
+      (SplitMode.exactAmounts, 'Exact', Icons.euro),
+      (SplitMode.percentages, 'Percent', Icons.percent),
+      (SplitMode.shares, 'Shares', Icons.pie_chart_outline),
+    ];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final (mode, label, icon) in modes)
+          _CategoryChoiceChip(
+            label: label,
+            icon: icon,
+            selected: _splitMode == mode,
+            onTap: () => _setSplitMode(mode),
+          ),
+      ],
     );
+  }
+
+  void _onSplitInputChanged(String id, double value) {
+    setState(() {
+      switch (_splitMode) {
+        case SplitMode.equal:
+          break;
+        case SplitMode.exactAmounts:
+          _exactCents[id] = Money.eurToCents(value);
+        case SplitMode.percentages:
+          _percentBp[id] = (value * 100).round();
+        case SplitMode.shares:
+          final w = value.round();
+          _shares[id] = w < 0 ? 0 : w;
+      }
+    });
+  }
+
+  /// A split input controller, seeded once from the current strategy's value.
+  TextEditingController _splitControllerFor(String id) {
+    return _splitControllers.putIfAbsent(id, () {
+      final text = switch (_splitMode) {
+        SplitMode.equal => '',
+        SplitMode.exactAmounts => Money.centsToEur(
+          _exactCents[id] ?? 0,
+        ).toStringAsFixed(2),
+        SplitMode.percentages => ((_percentBp[id] ?? 0) / 100).toStringAsFixed(
+          2,
+        ),
+        SplitMode.shares => '${_shares[id] ?? 0}',
+      };
+      return TextEditingController(text: text);
+    });
   }
 
   // A text controller that lives for the field's lifetime, seeded once.
@@ -703,10 +967,21 @@ class _AddPurchaseScreenState extends State<AddPurchaseScreen> {
       return 'Include at least one person in the split.';
     }
     if (!_splitValid) {
-      final diff = _totalCents - _splitsTotal;
-      return diff > 0
-          ? 'Split is ${Money.formatEur(diff)} short of the total.'
-          : 'Split exceeds the total by ${Money.formatEur(-diff)}.';
+      switch (_splitMode) {
+        case SplitMode.percentages:
+          final diff = 10000 - _percentTotalBp;
+          return diff > 0
+              ? 'Percentages are ${_formatPercent(diff)}% short of 100%.'
+              : 'Percentages exceed 100% by ${_formatPercent(-diff)}%.';
+        case SplitMode.shares:
+          return 'Give at least one person a weight.';
+        case SplitMode.exactAmounts:
+        case SplitMode.equal:
+          final diff = _totalCents - _splitsTotal;
+          return diff > 0
+              ? 'Split is ${Money.formatEur(diff)} short of the total.'
+              : 'Split exceeds the total by ${Money.formatEur(-diff)}.';
+      }
     }
     return null;
   }
@@ -802,6 +1077,96 @@ class _Badge extends StatelessWidget {
   }
 }
 
+class _AddReceiptButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AddReceiptButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 76,
+        height: 76,
+        margin: const EdgeInsets.only(top: 4),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceHigh,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.outline),
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_a_photo_outlined, color: AppTheme.primary),
+            SizedBox(height: 4),
+            Text(
+              'Add',
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryChoiceChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _CategoryChoiceChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.primary.withValues(alpha: 0.16)
+              : AppTheme.surfaceHigh,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: selected ? AppTheme.primary : AppTheme.outline,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: selected ? AppTheme.primary : AppTheme.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: selected ? AppTheme.textPrimary : AppTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PersonChip extends StatelessWidget {
   final Person person;
   final bool selected;
@@ -856,11 +1221,13 @@ class _PersonChip extends StatelessWidget {
 class _SplitRow extends StatelessWidget {
   final Person person;
   final bool included;
-  final _SplitMode mode;
+  final SplitMode mode;
   final int shareCents;
   final TextEditingController? controller;
   final VoidCallback onToggle;
-  final ValueChanged<int> onChanged;
+
+  /// Reports the raw entered number (euros / percent / weight, per [mode]).
+  final ValueChanged<double> onChanged;
 
   const _SplitRow({
     required this.person,
@@ -890,15 +1257,31 @@ class _SplitRow extends StatelessWidget {
             child: GestureDetector(
               onTap: onToggle,
               behavior: HitTestBehavior.opaque,
-              child: Text(
-                person.name,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: included
-                      ? AppTheme.textPrimary
-                      : AppTheme.textSecondary,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    person.name,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: included
+                          ? AppTheme.textPrimary
+                          : AppTheme.textSecondary,
+                    ),
+                  ),
+                  // Show the resolved € share beneath weighted/percentage inputs.
+                  if (included &&
+                      (mode == SplitMode.percentages ||
+                          mode == SplitMode.shares))
+                    Text(
+                      '= ${Money.formatEur(shareCents)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -911,7 +1294,7 @@ class _SplitRow extends StatelessWidget {
               ),
               child: const Text('Excluded'),
             )
-          else if (mode == _SplitMode.equally)
+          else if (mode == SplitMode.equal)
             Text(
               Money.formatEur(shareCents),
               style: const TextStyle(
@@ -922,10 +1305,62 @@ class _SplitRow extends StatelessWidget {
             )
           else
             SizedBox(
-              width: 110,
-              child: _EurField(controller: controller!, onChanged: onChanged),
+              width: 104,
+              child: _NumberField(
+                controller: controller!,
+                prefixText: mode == SplitMode.exactAmounts ? '€' : null,
+                suffixText: switch (mode) {
+                  SplitMode.percentages => '%',
+                  SplitMode.shares => '×',
+                  _ => null,
+                },
+                allowDecimal: mode != SplitMode.shares,
+                onChanged: onChanged,
+              ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// A compact numeric input that reports the parsed value (0 when empty/invalid).
+class _NumberField extends StatelessWidget {
+  final TextEditingController controller;
+  final String? prefixText;
+  final String? suffixText;
+  final bool allowDecimal;
+  final ValueChanged<double> onChanged;
+
+  const _NumberField({
+    required this.controller,
+    required this.prefixText,
+    required this.suffixText,
+    required this.allowDecimal,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.numberWithOptions(decimal: allowDecimal),
+      textAlign: TextAlign.end,
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(
+          allowDecimal ? RegExp(r'[0-9.,]') : RegExp(r'[0-9]'),
+        ),
+      ],
+      onChanged: (v) => onChanged(double.tryParse(v.replaceAll(',', '.')) ?? 0),
+      style: const TextStyle(fontWeight: FontWeight.w700),
+      decoration: InputDecoration(
+        isDense: true,
+        prefixText: prefixText,
+        suffixText: suffixText,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 10,
+        ),
       ),
     );
   }

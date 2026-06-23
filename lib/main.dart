@@ -1,6 +1,7 @@
 import 'package:delime/data/app_repository.dart';
 import 'package:delime/data/database.dart';
-import 'package:delime/screens/home_screen.dart';
+import 'package:delime/data/file_receipt_store.dart';
+import 'package:delime/screens/trips_screen.dart';
 import 'package:delime/state/app_state.dart';
 import 'package:delime/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -19,10 +20,11 @@ void main() {
   );
 
   final repository = AppRepository(AppDatabase.instance);
+  final receipts = FileReceiptStore();
 
   runApp(
     ChangeNotifierProvider(
-      create: (_) => AppState(repository)..load(),
+      create: (_) => AppState(repository, receipts: receipts)..load(),
       child: const DelimeApp(),
     ),
   );
@@ -37,7 +39,7 @@ class DelimeApp extends StatelessWidget {
       title: 'Delime',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark(),
-      home: const HomeScreen(),
+      home: const TripsScreen(),
     );
   }
 }
